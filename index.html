@@ -134,6 +134,52 @@
     </div>
 
 
+<!-- صفحة الطلبات للإدارة -->
+<div id="orders-page" class="page hidden">
+    <div class="container">
+        <div class="page-header">
+            <h2 class="page-title">إدارة الطلبات</h2>
+            <button id="close-orders" class="close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="filters">
+            <button class="filter-btn active" data-filter="all">الكل</button>
+            <button class="filter-btn" data-filter="pending">قيد الانتظار</button>
+            <button class="filter-btn" data-filter="approved">مقبولة</button>
+            <button class="filter-btn" data-filter="rejected">مرفوضة</button>
+        </div>
+        
+        <div id="orders-container" class="orders-list">
+            <!-- الطلبات ستظهر هنا -->
+        </div>
+    </div>
+</div>
+
+<!-- صفحة تفاصيل الطلب -->
+<div id="order-detail-page" class="page hidden">
+    <div class="container">
+        <div class="page-header">
+            <h2 class="page-title">تفاصيل الطلب</h2>
+            <button id="close-order-detail" class="close-btn">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div id="order-detail-content">
+            <!-- محتوى تفاصيل الطلب سيظهر هنا -->
+        </div>
+        
+        <div class="order-actions">
+            <button id="approve-order-btn" class="btn btn-success">قبول الطلب</button>
+            <button id="reject-order-btn" class="btn btn-danger">رفض الطلب</button>
+            <button id="chat-with-buyer-btn" class="btn">التحدث مع المشتري</button>
+            <button id="chat-with-seller-btn" class="btn">التحدث مع البائع</button>
+        </div>
+    </div>
+</div>
+
 
 <!-- صفحة تفاصيل المنشور -->
 <div id="post-detail-page" class="page hidden">
@@ -224,31 +270,35 @@
         </div>
     </div>
 
-    <!-- شريط التذييل -->
-    <footer>
-        <div class="footer-icons">
-            <div class="icon" id="profile-icon">
-                <i class="fas fa-user"></i>
-                <span>حسابي</span>
-            </div>
-            <div class="icon" id="messages-icon">
-                <i class="fas fa-envelope"></i>
-                <span>الرسائل</span>
-            </div>
-            <div class="icon highlight" id="add-post-icon">
-                <i class="fas fa-plus"></i>
-            </div>
-            <div class="icon" id="support-icon">
-                <i class="fas fa-headset"></i>
-                <span>الدعم</span>
-            </div>
-            <div class="icon" id="more-icon">
-                <i class="fas fa-ellipsis-h"></i>
-                <span>المزيد</span>
-            </div>
+<!-- شريط التذييل -->
+<footer>
+    <div class="footer-icons">
+        <div class="icon" id="profile-icon">
+            <i class="fas fa-user"></i>
+            <span>حسابي</span>
         </div>
-    </footer>
-
+        <div class="icon" id="messages-icon">
+            <i class="fas fa-envelope"></i>
+            <span>الرسائل</span>
+        </div>
+        <div class="icon highlight" id="add-post-icon">
+            <i class="fas fa-plus"></i>
+        </div>
+        <div class="icon" id="support-icon">
+            <i class="fas fa-headset"></i>
+            <span>الدعم</span>
+        </div>
+        <div class="icon" id="more-icon">
+            <i class="fas fa-ellipsis-h"></i>
+            <span>المزيد</span>
+        </div>
+        <!-- أيقونة الإدارة (تظهر للمشرفين فقط) -->
+        <div class="icon" id="admin-icon" style="display: none;">
+            <i class="fas fa-cog"></i>
+            <span>الإدارة</span>
+        </div>
+    </div>
+</footer>
     <!-- Firebase SDK -->
     <script type="module" src="app.js"></script>
 </body>

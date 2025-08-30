@@ -313,6 +313,152 @@ header h1 {
     color: var(--primary-color);
 }
 
+
+/* صفحة الطلبات */
+.orders-list {
+    margin-top: 20px;
+}
+
+.order-item {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: var(--box-shadow);
+    cursor: pointer;
+    transition: transform 0.3s;
+}
+
+.order-item:hover {
+    transform: translateY(-3px);
+}
+
+.order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.order-title {
+    font-weight: 700;
+    color: var(--dark-color);
+}
+
+.order-status {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.status-pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-approved {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-rejected {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.order-meta {
+    display: flex;
+    justify-content: space-between;
+    color: var(--gray-color);
+    font-size: 0.9rem;
+}
+
+.order-price {
+    font-weight: 700;
+    color: var(--success-color);
+}
+
+/* فلاتر الطلبات */
+.filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    padding: 10px 0;
+}
+
+.filter-btn {
+    padding: 8px 15px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.3s;
+}
+
+.filter-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* صفحة تفاصيل الطلب */
+.order-detail-section {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: var(--box-shadow);
+}
+
+.order-detail-section h3 {
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    border-bottom: 1px solid var(--light-gray);
+    padding-bottom: 10px;
+}
+
+.order-detail-item {
+    display: flex;
+    margin-bottom: 10px;
+}
+
+.order-detail-label {
+    font-weight: 500;
+    width: 120px;
+    color: var(--dark-color);
+}
+
+.order-detail-value {
+    flex: 1;
+    color: var(--gray-color);
+}
+
+.order-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.order-actions .btn {
+    flex: 1;
+    min-width: 150px;
+}
+
+/* إضافة أيقونة للإدارة في Footer */
+.admin-icon {
+    display: none;
+}
+
+.admin-icon.visible {
+    display: flex;
+}
+
+
 /* صفحة التوثيق */
 .auth-container {
     max-width: 500px;
