@@ -495,7 +495,34 @@ header h1 {
     color: var(--gray-color);
     font-size: 0.9rem;
 }
+/* زر الشراء */
+.purchase-section {
+    margin-top: 20px;
+    padding: 20px;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    text-align: center;
+}
 
+.btn-success {
+    background-color: var(--success-color);
+    color: white;
+    padding: 12px 30px;
+    font-size: 1.1rem;
+}
+
+.btn-success:hover {
+    background-color: #45a049;
+}
+
+/* تحسينات للواجهة على الجوال */
+@media (max-width: 768px) {
+    .btn-success {
+        padding: 10px 20px;
+        font-size: 1rem;
+    }
+}
 
 /* شريط التذييل */
 footer {
