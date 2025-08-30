@@ -50,6 +50,7 @@ const authPage = document.getElementById('auth-page');
 const addPostPage = document.getElementById('add-post-page');
 const profilePage = document.getElementById('profile-page');
 const messagesPage = document.getElementById('messages-page');
+const postDetailPage = document.getElementById('post-detail-page');
 const loadingOverlay = document.getElementById('loading-overlay');
 const uploadProgress = document.getElementById('upload-progress');
 
@@ -63,6 +64,7 @@ const publishBtn = document.getElementById('publish-btn');
 
 const postsContainer = document.getElementById('posts-container');
 const userInfo = document.getElementById('user-info');
+const postDetailContent = document.getElementById('post-detail-content');
 
 const profileIcon = document.getElementById('profile-icon');
 const messagesIcon = document.getElementById('messages-icon');
@@ -74,6 +76,7 @@ const closeAuthBtn = document.getElementById('close-auth');
 const closeAddPostBtn = document.getElementById('close-add-post');
 const closeProfileBtn = document.getElementById('close-profile');
 const closeMessagesBtn = document.getElementById('close-messages');
+const closePostDetailBtn = document.getElementById('close-post-detail');
 
 // عناصر رفع الصورة
 const postImageInput = document.getElementById('post-image');
@@ -90,11 +93,6 @@ const messagesContainer = document.getElementById('messages-container');
 const messageInput = document.getElementById('message-input');
 const sendMessageBtn = document.getElementById('send-message-btn');
 const currentChatUser = document.getElementById('current-chat-user');
-
-// عناصر تفاصيل المنشور
-const postDetailPage = document.getElementById('post-detail-page');
-const postDetailContent = document.getElementById('post-detail-content');
-const closePostDetailBtn = document.getElementById('close-post-detail');
 
 // متغيرات نظام الرسائل
 let activeUserId = null;
@@ -124,7 +122,10 @@ function loadPosts() {
         if (snapshot.exists()) {
             const posts = snapshot.val();
             Object.keys(posts).reverse().forEach(postId => {
-                const post = posts[postId];
+                const post = {
+                    id: postId,
+                    ...posts[postId]
+                };
                 createPostCard(post);
             });
         } else {
@@ -159,7 +160,69 @@ function createPostCard(post) {
         </div>
     `;
     
+    // إضافة حدث النقر لعرض التفاصيل
+    postCard.addEventListener('click', () => {
+        showPostDetail(post.id);
+    });
+    
     postsContainer.appendChild(postCard);
+}
+
+// عرض تفاصيل المنشور
+function showPostDetail(postId) {
+    const postRef = ref(database, 'posts/' + postId);
+    onValue(postRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const post = snapshot.val();
+            
+            // إنشاء محتوى تفاصيل المنشور
+            postDetailContent.innerHTML = `
+                ${post.imageUrl ? 
+                    `<img src="${post.imageUrl}" alt="${post.title}" class="post-detail-image">` : 
+                    `<div class="post-detail-image" style="display: flex; align-items: center; justify-content: center; background: var(--light-gray);">
+                        <i class="fas fa-image fa-3x" style="color: var(--gray-color);"></i>
+                    </div>`
+                }
+                
+                <h2 class="post-detail-title">${post.title}</h2>
+                
+                <p class="post-detail-description">${post.description}</p>
+                
+                <div class="post-detail-meta">
+                    ${post.price ? `
+                        <div class="meta-item">
+                            <i class="fas fa-tag"></i>
+                            <span>السعر: ${post.price}</span>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="meta-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>الموقع: ${post.location}</span>
+                    </div>
+                    
+                    <div class="meta-item">
+                        <i class="fas fa-phone"></i>
+                        <span>رقم الهاتف: ${post.phone}</span>
+                    </div>
+                </div>
+                
+                <div class="post-detail-author">
+                    <div class="author-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="author-info">
+                        <div class="author-name">${post.authorName}</div>
+                        <div class="author-contact">${post.authorPhone}</div>
+                    </div>
+                </div>
+            `;
+            
+            showPage(postDetailPage);
+        } else {
+            alert('المنشور غير موجود');
+        }
+    }, { onlyOnce: true });
 }
 
 // تسجيل الدخول
@@ -420,6 +483,11 @@ closeMessagesBtn.addEventListener('click', () => {
     showPage(homePage);
 });
 
+// إغلاق صفحة تفاصيل المنشور
+closePostDetailBtn.addEventListener('click', () => {
+    showPage(homePage);
+});
+
 // تغيير علامات التوثيق
 document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -467,34 +535,6 @@ removeImageBtn.addEventListener('click', () => {
     postImageInput.value = '';
     imageName.textContent = 'لم يتم اختيار صورة';
     imagePreview.classList.add('hidden');
-});
-
-// إرسال رسالة
-sendMessageBtn.addEventListener('click', () => {
-    const message = messageInput.value.trim();
-    if (!message || !activeUserId) return;
-    
-    const user = auth.currentUser;
-    if (!user) return;
-    
-    const newMessage = {
-        senderId: user.uid,
-        receiverId: activeUserId,
-        content: message,
-        timestamp: serverTimestamp(),
-        isRead: false
-    };
-    
-    push(ref(database, 'messages'), newMessage)
-        .then(() => {
-            messageInput.value = '';
-            // تحديث وقت آخر رسالة
-            userLastMessageTime[activeUserId] = Date.now();
-            sortUsersList();
-        })
-        .catch(error => {
-            alert('حدث خطأ أثناء إرسال الرسالة: ' + error.message);
-        });
 });
 
 // تحميل الرسائل والمستخدمين
@@ -584,64 +624,32 @@ function loadAllUsersForAdmin(currentUserId) {
     });
 }
 
-// إرسال رسالة مع التحقق من الصلاحية
-sendMessageBtn.addEventListener('click', () => {
-    const message = messageInput.value.trim();
-    if (!message || !activeUserId) return;
-    
-    const user = auth.currentUser;
-    if (!user) return;
-    
-    // التحقق من الصلاحية
-    const userRef = ref(database, 'users/' + user.uid);
-    onValue(userRef, (userSnapshot) => {
-        if (userSnapshot.exists()) {
-            const userData = userSnapshot.val();
-            const isAdmin = userData.isAdmin || false;
+// تحميل رسائل المستخدمين
+function loadUserMessages(users, currentUserId) {
+    const messagesRef = ref(database, 'messages');
+    onValue(messagesRef, (snapshot) => {
+        userMessages = {};
+        userUnreadCounts = {};
+        
+        if (snapshot.exists()) {
+            const messages = snapshot.val();
             
-            // إذا كان مستخدم عادي، التأكد من أنه يرسل للإدارة فقط
-            if (!isAdmin) {
-                const receiverRef = ref(database, 'users/' + activeUserId);
-                onValue(receiverRef, (receiverSnapshot) => {
-                    if (receiverSnapshot.exists()) {
-                        const receiverData = receiverSnapshot.val();
-                        if (!receiverData.isAdmin) {
-                            alert('يمكنك التواصل مع الإدارة فقط');
-                            return;
-                        }
-                        
-                        sendMessageToUser(message, user, activeUserId);
-                    }
-                }, { onlyOnce: true });
-            } else {
-                // إذا كان مشرفاً، يمكنه الإرسال لأي مستخدم
-                sendMessageToUser(message, user, activeUserId);
-            }
-        }
-    }, { onlyOnce: true });
-});
-
-// دالة منفصلة لإرسال الرسالة
-function sendMessageToUser(message, user, receiverId) {
-    const newMessage = {
-        senderId: user.uid,
-        receiverId: receiverId,
-        content: message,
-        timestamp: serverTimestamp(),
-        isRead: false
-    };
-    
-    push(ref(database, 'messages'), newMessage)
-        .then(() => {
-            messageInput.value = '';
-            // تحديث وقت آخر رسالة
-            userLastMessageTime[receiverId] = Date.now();
-            sortUsersList();
-        })
-        .catch(error => {
-            alert('حدث خطأ أثناء إرسال الرسالة: ' + error.message);
-        });
-}
+            // تجميع الرسائل حسب المستخدم
+            Object.keys(messages).forEach(messageId => {
+                const message = messages[messageId];
+                
+                // تحديد المستخدم الآخر في المحادثة
+                const otherUserId = message.senderId === currentUserId ? 
+                    message.receiverId : message.senderId;
+                
+                if (!userMessages[otherUserId]) {
+                    userMessages[otherUserId] = [];
+                }
+                
+                userMessages[otherUserId].push({
+                    id: messageId,
+                    ...message
+                });
                 
                 // حساب الرسائل غير المقروءة
                 if (message.receiverId === currentUserId && !message.isRead) {
@@ -711,8 +719,6 @@ function displayUsersList(users, currentUserId) {
     });
 }
 
-
-
 // فتح محادثة مع مستخدم
 function openChat(userData) {
     activeUserId = userData.id;
@@ -749,9 +755,11 @@ function openChat(userData) {
     document.querySelectorAll('.user-item').forEach(item => {
         item.classList.remove('active');
     });
-    document.querySelector(`.user-item[data-user-id="${userData.id}"]`).classList.add('active');
+    const activeUserItem = document.querySelector(`.user-item[data-user-id="${userData.id}"]`);
+    if (activeUserItem) {
+        activeUserItem.classList.add('active');
+    }
 }
-
 
 // عرض الرسائل في المحادثة
 function displayMessages(userId) {
@@ -812,6 +820,65 @@ function markMessagesAsRead(userId) {
     }
 }
 
+// إرسال رسالة مع التحقق من الصلاحية
+sendMessageBtn.addEventListener('click', () => {
+    const message = messageInput.value.trim();
+    if (!message || !activeUserId) return;
+    
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    // التحقق من الصلاحية
+    const userRef = ref(database, 'users/' + user.uid);
+    onValue(userRef, (userSnapshot) => {
+        if (userSnapshot.exists()) {
+            const userData = userSnapshot.val();
+            const isAdmin = userData.isAdmin || false;
+            
+            // إذا كان مستخدم عادي، التأكد من أنه يرسل للإدارة فقط
+            if (!isAdmin) {
+                const receiverRef = ref(database, 'users/' + activeUserId);
+                onValue(receiverRef, (receiverSnapshot) => {
+                    if (receiverSnapshot.exists()) {
+                        const receiverData = receiverSnapshot.val();
+                        if (!receiverData.isAdmin) {
+                            alert('يمكنك التواصل مع الإدارة فقط');
+                            return;
+                        }
+                        
+                        sendMessageToUser(message, user, activeUserId);
+                    }
+                }, { onlyOnce: true });
+            } else {
+                // إذا كان مشرفاً، يمكنه الإرسال لأي مستخدم
+                sendMessageToUser(message, user, activeUserId);
+            }
+        }
+    }, { onlyOnce: true });
+});
+
+// دالة منفصلة لإرسال الرسالة
+function sendMessageToUser(message, user, receiverId) {
+    const newMessage = {
+        senderId: user.uid,
+        receiverId: receiverId,
+        content: message,
+        timestamp: serverTimestamp(),
+        isRead: false
+    };
+    
+    push(ref(database, 'messages'), newMessage)
+        .then(() => {
+            messageInput.value = '';
+            // تحديث وقت آخر رسالة
+            userLastMessageTime[receiverId] = Date.now();
+            sortUsersList();
+        })
+        .catch(error => {
+            alert('حدث خطأ أثناء إرسال الرسالة: ' + error.message);
+        });
+}
+
 // ترتيب قائمة المستخدمين
 function sortUsersList() {
     const userItems = Array.from(usersList.querySelectorAll('.user-item'));
@@ -828,6 +895,33 @@ function sortUsersList() {
     userItems.forEach(item => {
         usersList.appendChild(item);
     });
+}
+
+// عرض مؤشر الصلاحية في واجهة الرسائل
+function displayAdminIndicator(isAdmin) {
+    const chatHeader = document.getElementById('chat-header');
+    
+    if (isAdmin) {
+        if (!document.getElementById('admin-badge')) {
+            const adminBadge = document.createElement('span');
+            adminBadge.id = 'admin-badge';
+            adminBadge.className = 'admin-badge';
+            adminBadge.innerHTML = '<i class="fas fa-crown"></i> مشرف';
+            adminBadge.style.marginRight = '10px';
+            adminBadge.style.background = 'var(--warning-color)';
+            adminBadge.style.color = 'white';
+            adminBadge.style.padding = '5px 10px';
+            adminBadge.style.borderRadius = '15px';
+            adminBadge.style.fontSize = '0.8rem';
+            
+            chatHeader.insertBefore(adminBadge, currentChatUser);
+        }
+    } else {
+        const adminBadge = document.getElementById('admin-badge');
+        if (adminBadge) {
+            adminBadge.remove();
+        }
+    }
 }
 
 // وظائف مساعدة
@@ -882,200 +976,4 @@ function resetAuthForms() {
     document.getElementById('signup-address').value = '';
     authMessage.textContent = '';
     authMessage.className = '';
-}
-
-
-// عرض مؤشر الصلاحية في واجهة الرسائل
-function displayAdminIndicator(isAdmin) {
-    const chatHeader = document.getElementById('chat-header');
-    
-    if (isAdmin) {
-        if (!document.getElementById('admin-badge')) {
-            const adminBadge = document.createElement('span');
-            adminBadge.id = 'admin-badge';
-            adminBadge.className = 'admin-badge';
-            adminBadge.innerHTML = '<i class="fas fa-crown"></i> مشرف';
-            adminBadge.style.marginRight = '10px';
-            adminBadge.style.background = 'var(--warning-color)';
-            adminBadge.style.color = 'white';
-            adminBadge.style.padding = '5px 10px';
-            adminBadge.style.borderRadius = '15px';
-            adminBadge.style.fontSize = '0.8rem';
-            
-            chatHeader.insertBefore(adminBadge, currentChatUser);
-        }
-    } else {
-        const adminBadge = document.getElementById('admin-badge');
-        if (adminBadge) {
-            adminBadge.remove();
-        }
-    }
-}// عرض مؤشر الصلاحية في واجهة الرسائل
-function displayAdminIndicator(isAdmin) {
-    const chatHeader = document.getElementById('chat-header');
-    
-    if (isAdmin) {
-        if (!document.getElementById('admin-badge')) {
-            const adminBadge = document.createElement('span');
-            adminBadge.id = 'admin-badge';
-            adminBadge.className = 'admin-badge';
-            adminBadge.innerHTML = '<i class="fas fa-crown"></i> مشرف';
-            adminBadge.style.marginRight = '10px';
-            adminBadge.style.background = 'var(--warning-color)';
-            adminBadge.style.color = 'white';
-            adminBadge.style.padding = '5px 10px';
-            adminBadge.style.borderRadius = '15px';
-            adminBadge.style.fontSize = '0.8rem';
-            
-            chatHeader.insertBefore(adminBadge, currentChatUser);
-        }
-    } else {
-        const adminBadge = document.getElementById('admin-badge');
-        if (adminBadge) {
-            adminBadge.remove();
-        }
-    }
-}'
-
-// عرض تفاصيل المنشور
-function showPostDetail(postId) {
-    const postRef = ref(database, 'posts/' + postId);
-    onValue(postRef, (snapshot) => {
-        if (snapshot.exists()) {
-            const post = snapshot.val();
-            
-            // إنشاء محتوى تفاصيل المنشور
-            postDetailContent.innerHTML = `
-                ${post.imageUrl ? 
-                    `<img src="${post.imageUrl}" alt="${post.title}" class="post-detail-image">` : 
-                    `<div class="post-detail-image" style="display: flex; align-items: center; justify-content: center; background: var(--light-gray);">
-                        <i class="fas fa-image fa-3x" style="color: var(--gray-color);"></i>
-                    </div>`
-                }
-                
-                <h2 class="post-detail-title">${post.title}</h2>
-                
-                <p class="post-detail-description">${post.description}</p>
-                
-                <div class="post-detail-meta">
-                    ${post.price ? `
-                        <div class="meta-item">
-                            <i class="fas fa-tag"></i>
-                            <span>السعر: ${post.price}</span>
-                        </div>
-                    ` : ''}
-                    
-                    <div class="meta-item">
-                        <i class="fas fa-map-marker-alt"></i>
-                        <span>الموقع: ${post.location}</span>
-                    </div>
-                    
-                    <div class="meta-item">
-                        <i class="fas fa-phone"></i>
-                        <span>رقم الهاتف: ${post.phone}</span>
-                    </div>
-                </div>
-                
-                <div class="post-detail-author">
-                    <div class="author-avatar">
-                        <i class="fas fa-user"></i>
-                    </div>
-                    <div class="author-info">
-                        <div class="author-name">${post.authorName}</div>
-                        <div class="author-contact">${post.authorPhone}</div>
-                    </div>
-                </div>
-            `;
-            
-            showPage(postDetailPage);
-        } else {
-            alert('المنشور غير موجود');
-        }
-    }, { onlyOnce: true });
-}
-
-// إضافة حدث الإغلاق
-closePostDetailBtn.addEventListener('click', () => {
-    showPage(homePage);
-});
-
-// تعديل دالة إنشاء بطاقة المنشور لإضافة حدث النقر
-function createPostCard(post) {
-    const postCard = document.createElement('div');
-    postCard.className = 'post-card';
-    
-    // إذا كان هناك صورة، نعرضها. وإلا نعرض أيقونة افتراضية.
-    const imageContent = post.imageUrl 
-        ? `<div class="post-image"><img src="${post.imageUrl}" alt="${post.title}"></div>`
-        : `<div class="post-image"><i class="fas fa-image fa-3x"></i></div>`;
-    
-    postCard.innerHTML = `
-        ${imageContent}
-        <div class="post-content">
-            <h3 class="post-title">${post.title}</h3>
-            <p class="post-description">${post.description}</p>
-            <div class="post-meta">
-                ${post.price ? `<div class="post-price">${post.price}</div>` : ''}
-                <div class="post-location"><i class="fas fa-map-marker-alt"></i> ${post.location}</div>
-            </div>
-            <div class="post-author">
-                <i class="fas fa-user"></i> ${post.authorName}
-                <span class="post-phone">${post.phone}</span>
-            </div>
-        </div>
-    `;
-    
-    // إضافة حدث النقر لعرض التفاصيل
-    postCard.addEventListener('click', () => {
-        showPostDetail(post.id);
-    });
-    
-    postsContainer.appendChild(postCard);
-}
-
-// تعديل دالة تحميل المنشورات لإضافة المعرف
-function loadPosts() {
-    const postsRef = ref(database, 'posts');
-    onValue(postsRef, (snapshot) => {
-        postsContainer.innerHTML = '';
-        
-        if (snapshot.exists()) {
-            const posts = snapshot.val();
-            Object.keys(posts).reverse().forEach(postId => {
-                const post = {
-                    id: postId,
-                    ...posts[postId]
-                };
-                createPostCard(post);
-            });
-        } else {
-            postsContainer.innerHTML = '<p class="no-posts">لا توجد منشورات بعد. كن أول من ينشر!</p>';
-        }
-    });
-}tener('click', () => {
-        showPostDetail(post.id);
-    });
-    
-    postsContainer.appendChild(postCard);
-}
-
-// تعديل دالة تحميل المنشورات لإضافة المعرف
-function loadPosts() {
-    const postsRef = ref(database, 'posts');
-    onValue(postsRef, (snapshot) => {
-        postsContainer.innerHTML = '';
-        
-        if (snapshot.exists()) {
-            const posts = snapshot.val();
-            Object.keys(posts).reverse().forEach(postId => {
-                const post = {
-                    id: postId,
-                    ...posts[postId]
-                };
-                createPostCard(post);
-            });
-        } else {
-            postsContainer.innerHTML = '<p class="no-posts">لا توجد منشورات بعد. كن أول من ينشر!</p>';
-        }
-    });
 }
