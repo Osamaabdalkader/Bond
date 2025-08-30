@@ -16,7 +16,10 @@ import {
     onValue, 
     serverTimestamp,
     update,
-    remove
+    remove,
+    query,
+    orderByChild,
+    equalTo
 } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 import { 
     getStorage, 
@@ -99,6 +102,8 @@ let activeUserId = null;
 let userMessages = {};
 let userUnreadCounts = {};
 let userLastMessageTime = {};
+let currentUserData = null;
+let messagesListener = null;
 
 // تحميل المنشورات عند بدء التحميل
 document.addEventListener('DOMContentLoaded', () => {
@@ -108,8 +113,16 @@ document.addEventListener('DOMContentLoaded', () => {
 // استمع لتغير حالة المستخدم
 onAuthStateChanged(auth, user => {
     if (user) {
-        // تحميل الرسائل إذا كان المستخدم مسجل الدخول
-        loadMessages();
+        // تحميل بيانات المستخدم الحالي
+        const userRef = ref(database, 'users/' + user.uid);
+        onValue(userRef, (snapshot) => {
+            if (snapshot.exists()) {
+                currentUserData = snapshot.val();
+                currentUserData.uid = user.uid;
+            }
+        }, { onlyOnce: true });
+    } else {
+        currentUserData = null;
     }
 });
 
@@ -295,6 +308,11 @@ signupBtn.addEventListener('click', e => {
 logoutBtn.addEventListener('click', () => {
     signOut(auth).then(() => {
         showPage(homePage);
+        // إزالة مستمع الرسائل عند تسجيل الخروج
+        if (messagesListener) {
+            messagesListener();
+            messagesListener = null;
+        }
     });
 });
 
@@ -481,6 +499,11 @@ closeProfileBtn.addEventListener('click', () => {
 // إغلاق صفحة الرسائل
 closeMessagesBtn.addEventListener('click', () => {
     showPage(homePage);
+    // إزالة مستمع الرسائل عند إغلاق الصفحة
+    if (messagesListener) {
+        messagesListener();
+        messagesListener = null;
+    }
 });
 
 // إغلاق صفحة تفاصيل المنشور
@@ -548,6 +571,9 @@ function loadMessages() {
         if (userSnapshot.exists()) {
             const userData = userSnapshot.val();
             const isAdmin = userData.isAdmin || false;
+            
+            // إظهار رسالة تحميل
+            usersList.innerHTML = '<p class="no-users">جاري تحميل المحادثات...</p>';
             
             if (isAdmin) {
                 // إذا كان مشرفاً، تحميل جميع المستخدمين
@@ -626,8 +652,13 @@ function loadAllUsersForAdmin(currentUserId) {
 
 // تحميل رسائل المستخدمين
 function loadUserMessages(users, currentUserId) {
+    // إزالة المستمع السابق إذا كان موجوداً
+    if (messagesListener) {
+        messagesListener();
+    }
+    
     const messagesRef = ref(database, 'messages');
-    onValue(messagesRef, (snapshot) => {
+    messagesListener = onValue(messagesRef, (snapshot) => {
         userMessages = {};
         userUnreadCounts = {};
         
@@ -665,6 +696,11 @@ function loadUserMessages(users, currentUserId) {
         
         // عرض قائمة المستخدمين
         displayUsersList(users, currentUserId);
+        
+        // إذا كانت هناك محادثة نشطة، قم بتحديث الرسائل
+        if (activeUserId) {
+            displayMessages(activeUserId);
+        }
     });
 }
 
@@ -725,17 +761,9 @@ function openChat(userData) {
     
     // التحقق من صلاحية المستخدم الحالي
     const user = auth.currentUser;
-    if (user) {
-        const userRef = ref(database, 'users/' + user.uid);
-        onValue(userRef, (userSnapshot) => {
-            if (userSnapshot.exists()) {
-                const currentUserData = userSnapshot.val();
-                const isAdmin = currentUserData.isAdmin || false;
-                
-                // عرض مؤشر الصلاحية
-                displayAdminIndicator(isAdmin);
-            }
-        }, { onlyOnce: true });
+    if (user && currentUserData) {
+        // عرض مؤشر الصلاحية
+        displayAdminIndicator(currentUserData.isAdmin || false);
     }
     
     // تحديث واجهة المحادثة
@@ -771,28 +799,36 @@ function displayMessages(userId) {
     }
     
     // ترتيب الرسائل حسب الوقت
-    const sortedMessages = userMessages[userId].sort((a, b) => a.timestamp - b.timestamp);
+    const sortedMessages = userMessages[userId].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
     
     sortedMessages.forEach(message => {
-        const messageElement = document.createElement('div');
-        messageElement.className = `message ${message.senderId === activeUserId ? 'received' : 'sent'}`;
-        
-        const date = new Date(message.timestamp);
-        const timeString = date.toLocaleTimeString('ar-EG', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
-        
-        messageElement.innerHTML = `
-            <div class="message-content">${message.content}</div>
-            <div class="message-time">${timeString}</div>
-        `;
-        
-        messagesContainer.appendChild(messageElement);
+        addMessageToChat(message, userId);
     });
     
     // التمرير إلى أحدث رسالة
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// إضافة رسالة إلى الدردشة
+function addMessageToChat(message, userId) {
+    const messageElement = document.createElement('div');
+    
+    // تحديد إذا كانت الرسالة مرسلة أو مستلمة
+    const isSent = message.senderId === (currentUserData ? currentUserData.uid : null);
+    messageElement.className = `message ${isSent ? 'sent' : 'received'}`;
+    
+    const date = message.timestamp ? new Date(message.timestamp) : new Date();
+    const timeString = date.toLocaleTimeString('ar-EG', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+    });
+    
+    messageElement.innerHTML = `
+        <div class="message-content">${message.content}</div>
+        <div class="message-time">${timeString}</div>
+    `;
+    
+    messagesContainer.appendChild(messageElement);
 }
 
 // وضع علامة على الرسائل كمقروءة
@@ -805,18 +841,19 @@ function markMessagesAsRead(userId) {
             if (message.receiverId === user.uid && !message.isRead) {
                 update(ref(database, 'messages/' + message.id), {
                     isRead: true
+                }).then(() => {
+                    // تحديث العداد بعد وضع علامة مقروء
+                    userUnreadCounts[userId] = (userUnreadCounts[userId] || 1) - 1;
+                    if (userUnreadCounts[userId] <= 0) {
+                        userUnreadCounts[userId] = 0;
+                        const badge = document.querySelector(`.user-item[data-user-id="${userId}"] .unread-badge`);
+                        if (badge) {
+                            badge.remove();
+                        }
+                    }
                 });
             }
         });
-    }
-    
-    // إعادة تعيين العداد
-    userUnreadCounts[userId] = 0;
-    
-    // تحديث واجهة المستخدم
-    const badge = document.querySelector(`.user-item[data-user-id="${userId}"] .unread-badge`);
-    if (badge) {
-        badge.remove();
     }
 }
 
@@ -870,6 +907,18 @@ function sendMessageToUser(message, user, receiverId) {
     push(ref(database, 'messages'), newMessage)
         .then(() => {
             messageInput.value = '';
+            
+            // إضافة الرسالة فوراً إلى الواجهة
+            if (activeUserId === receiverId) {
+                addMessageToChat({
+                    ...newMessage,
+                    timestamp: Date.now()
+                }, receiverId);
+                
+                // التمرير إلى الأسفل لعرض الرسالة الجديدة
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+            
             // تحديث وقت آخر رسالة
             userLastMessageTime[receiverId] = Date.now();
             sortUsersList();
